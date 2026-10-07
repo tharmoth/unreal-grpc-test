@@ -124,6 +124,19 @@ If any `find` shows a different path, use that path in the `export` lines.
    were excluded. That happens when `Setup.bat` was run with
    `--exclude=Linux` / `--exclude=Unix`, or when `UE_GITDEPS_ARGS` contains
    an exclude. Clear the exclude and run `Setup.bat` again.
+
+   If the only matches are license files (e.g. `libcxx_v18.1.0.license`),
+   nothing is being excluded. The checkout simply doesn't ship LibCxx
+   binaries, so check which engine version you have. A libc++ 18.1.0
+   license means a newer engine than 5.3: clang/libc++ 18.1.0 came out
+   in March 2024, after 5.3 shipped.
+   ```powershell
+   Get-Content Engine\Build\Build.version            # MajorVersion / MinorVersion
+   Get-Content Engine\Config\Linux\Linux_SDK.json   # expect v22_clang-16.0.6-centos7 for 5.3
+   git branch --show-current; git describe --tags
+   ```
+   For 5.3, check out the `5.3` branch (or a `5.3.x-release` tag), run
+   `Setup.bat`, and search again.
 3. **Other sources:**
    - Run `Setup.sh` on the Linux machine. It always fetches the Linux files.
    - Use a Launcher install of 5.3 with *Target Platforms → Linux* enabled.
