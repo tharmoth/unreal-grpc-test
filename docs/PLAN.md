@@ -34,8 +34,11 @@ crashes at runtime. The most common mismatch is libstdc++ vs libc++, where
 4. **abseil, protobuf, re2, c-ares: use gRPC's bundled copies** (`module`).
    UE 5.3's core engine doesn't ship these. Step 6 checks for symbol clashes
    with any plugins you enable.
-5. **C++17** for the gRPC build. This is the standard gRPC tests against.
-   Code compiled with it links fine into UE 5.3 modules, which default to C++20.
+5. **C++20** for the gRPC build, matching your UE 5.3 project. This has to
+   match: abseil picks some type definitions (e.g. `absl::strong_ordering`
+   vs `std::strong_ordering`) based on the C++ standard. Mixing C++17
+   libraries with C++20 code that includes their headers would give
+   mismatched types.
 6. **Static libraries, Release, `-fPIC`**, with RTTI and exceptions left at gRPC's
    defaults (enabled). UE modules compile with `-fno-rtti -fno-exceptions`. That's
    safe because the gRPC code is compiled separately. The UE wrapper module

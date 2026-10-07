@@ -91,15 +91,15 @@ ls "$UE_LIBCXX/include/c++/v1/vector"
 export UE_LIBCXX_LIB="$UE_LIBCXX/lib/Unix/x86_64-unknown-linux-gnu"
 ls "$UE_LIBCXX_LIB"/libc++.a "$UE_LIBCXX_LIB"/libc++abi.a
 
-# OpenSSL (UE 5.3: 1.1.1t — verify)
-find "$UE_TP/OpenSSL" -path '*x86_64-unknown-linux-gnu*' \( -name 'libssl.a' -o -name 'libcrypto.a' -o -name 'ssl.h' \)
-export UE_OPENSSL_INC="$UE_TP/OpenSSL/1.1.1t/include/Unix/x86_64-unknown-linux-gnu"   # verify
-export UE_OPENSSL_LIB="$UE_TP/OpenSSL/1.1.1t/lib/Unix/x86_64-unknown-linux-gnu"       # verify
+# OpenSSL (UE 5.3: 1.1.1t, paths as in OpenSSL.Build.cs)
+export UE_OPENSSL_INC="$UE_TP/OpenSSL/1.1.1t/include/Unix"
+export UE_OPENSSL_LIB="$UE_TP/OpenSSL/1.1.1t/lib/Unix/x86_64-unknown-linux-gnu"
+ls "$UE_OPENSSL_INC/openssl/ssl.h" "$UE_OPENSSL_LIB"/libssl.a "$UE_OPENSSL_LIB"/libcrypto.a
 
-# zlib (UE 5.3: 1.2.13 — verify)
-find "$UE_TP/zlib" \( -name 'libz*.a' -path '*Unix*' \) -o -name 'zlib.h'
-export UE_ZLIB_INC="$UE_TP/zlib/1.2.13/include"                                       # verify
-export UE_ZLIB_LIB="$UE_TP/zlib/1.2.13/lib/Unix/x86_64-unknown-linux-gnu/Release/libz.a"  # verify
+# zlib (UE 5.3: 1.2.13, as in zlib.Build.cs; ignore the old v1.2.8 folder)
+ls "$UE_TP/zlib/1.2.13/include/zlib.h" "$UE_TP/zlib/1.2.13/lib/Unix/x86_64-unknown-linux-gnu/Release/libz.a"
+export UE_ZLIB_INC="$UE_TP/zlib/1.2.13/include"
+export UE_ZLIB_LIB="$UE_TP/zlib/1.2.13/lib/Unix/x86_64-unknown-linux-gnu/Release/libz.a"
 ```
 
 If any `find` shows a different path, use that path in the `export` lines.
@@ -227,7 +227,7 @@ cmake -S grpc -B build -G Ninja \
   -DCMAKE_TOOLCHAIN_FILE=$HOME/grpc-ue/ue53-linux-x86_64.cmake \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX="$PREFIX" \
-  -DCMAKE_CXX_STANDARD=17 \
+  -DCMAKE_CXX_STANDARD=20 \
   -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
   -DBUILD_SHARED_LIBS=OFF \
   -DgRPC_INSTALL=ON \
@@ -343,7 +343,7 @@ cp ../grpc/examples/protos/helloworld.proto .
   --plugin=protoc-gen-grpc="$PREFIX/bin/grpc_cpp_plugin" helloworld.proto
 
 CXX="$UE_TC/bin/clang++ --target=x86_64-unknown-linux-gnu --sysroot=$UE_TC \
-  -std=c++17 -fPIC -nostdinc++ -isystem $UE_LIBCXX/include/c++/v1 -I$PREFIX/include -I."
+  -std=c++20 -fPIC -nostdinc++ -isystem $UE_LIBCXX/include/c++/v1 -I$PREFIX/include -I."
 LIBS="-fuse-ld=lld $PREFIX/lib/libgrpc_ue.a $UE_OPENSSL_LIB/libssl.a $UE_OPENSSL_LIB/libcrypto.a $UE_ZLIB_LIB \
   -nodefaultlibs $UE_LIBCXX_LIB/libc++.a $UE_LIBCXX_LIB/libc++abi.a -lm -lc -lpthread -ldl -lrt -lgcc_s -lgcc"
 
