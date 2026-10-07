@@ -96,6 +96,9 @@ crashes at runtime. The most common mismatch is libstdc++ vs libc++, where
   environment's network policy (403).
 - **Get UE's libc++, OpenSSL, and zlib.** They're part of the UE 5.3 install,
   which is EULA-gated and needs your Epic-linked account and `Setup.sh`.
+  A Windows UE 5.3 install works as the source too, as long as its Linux
+  target-platform files are installed (see the guide, section 2c). The
+  compiler itself has to be the Linux-hosted toolchain, though.
 - **Test on a real RHEL 8 machine.** This container runs Ubuntu 24.04 with no
   Docker daemon. That's OK for building: the UE toolchain brings its own
   sysroot, so the host distro doesn't affect the output, and the glibc-2.17

@@ -99,6 +99,27 @@ export UE_ZLIB_LIB="$UE_TP/zlib/1.2.13/lib/Unix/x86_64-unknown-linux-gnu/Release
 
 If any `find` shows a different path, use that path in the `export` lines.
 
+### 2c. Copying these pieces from a Windows UE 5.3 install
+
+The `LibCxx`, `OpenSSL`, and `zlib` Linux files are identical on every host
+OS. They're prebuilt Linux (ELF) archives that Epic ships for cross-compiling.
+You can copy them from a Windows install, with three conditions:
+
+- **The Linux files must be installed.** For a Launcher install, enable
+  *Options → Target Platforms → Linux* on the 5.3 engine entry. For a
+  source build, `Setup.bat` fetches them unless you excluded Linux.
+  Check that `lib\Unix\x86_64-unknown-linux-gnu\libc++.a` exists under
+  `Engine\Source\ThirdParty\Unix\LibCxx`.
+- **Same engine version** (5.3.x) as the project you'll ship.
+- **Copy them as an archive**, e.g. `tar -czf ue53-linux-deps.tar.gz …` (Windows 10+
+  ships `tar`) or a zip. If you commit them through git on Windows, add a
+  `.gitattributes` with `* -text` first so headers don't get CRLF line endings.
+
+**The compiler is different.** The Windows "Linux cross-compile toolchain"
+(`v22_clang-16.0.6-centos7.exe`) contains Windows `clang.exe` binaries, which
+won't run on RHEL. Use the native Linux toolchain from step 2a instead. Its
+sysroot matches the Windows one, but you need the Linux-hosted compiler.
+
 ---
 
 ## 3. Get the gRPC source
