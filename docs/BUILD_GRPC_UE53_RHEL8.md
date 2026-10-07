@@ -7,8 +7,9 @@ links into a UE 5.3 project without ABI or duplicate-symbol problems.
 It's written for RHEL 8 but works on any x86_64 Linux host. The UE toolchain
 brings its own sysroot, so the host's gcc and glibc don't affect the build.
 
-> Paths marked *verify* are the usual UE 5.3 layout. Run the `find` commands
-> shown to confirm them on your install.
+> **Just want it built?** Run `scripts/build-grpc.sh`. It automates every step
+> below. See [BUILD_ON_LINUX.md](BUILD_ON_LINUX.md). This document explains
+> what the script does, for doing it by hand or debugging it.
 
 ---
 
@@ -71,7 +72,7 @@ Check it:
 ```bash
 export UE_TC="$LINUX_MULTIARCH_ROOT/x86_64-unknown-linux-gnu"
 "$UE_TC/bin/clang++" --version      # clang version 16.0.6
-ls "$UE_TC/bin" | grep -E 'ld.lld|llvm-ar|llvm-ranlib'
+ls "$UE_TC/bin" | grep -E 'ld.lld|llvm-ar|x86_64-unknown-linux-gnu-ranlib'
 ls "$UE_TC/usr/lib64" 2>/dev/null | head   # the sysroot
 ```
 
@@ -169,51 +170,101 @@ sysroot matches the Windows one, but you need the Linux-hosted compiler.
 
 ## 3. Get the gRPC source
 
+Only five submodules are needed. OpenSSL and zlib come from UE, and tests,
+benchmarks and xDS proto regeneration are off.
+
 ```bash
 mkdir -p ~/grpc-ue && cd ~/grpc-ue
-git clone --branch v1.84.0 --depth 1 --recurse-submodules --shallow-submodules \
-    https://github.com/grpc/grpc
+git clone --depth 1 --branch v1.84.0 https://github.com/grpc/grpc
+git -C grpc submodule update --init --depth 1 -- \
+    third_party/abseil-cpp third_party/cares/cares third_party/grpc-proto \
+    third_party/protobuf third_party/re2
 ```
 
 ---
 
-## 4. Write a CMake toolchain file for UE 5.3
+## 4. The CMake toolchain file for UE 5.3
 
-Save as `~/grpc-ue/ue53-linux-x86_64.cmake`:
+Use [`cmake/ue53-linux-x86_64.cmake`](../cmake/ue53-linux-x86_64.cmake) from
+this repository. It reads two environment variables:
+
+```bash
+export UE_TOOLCHAIN_ROOT="$UE_TC"     # .../v22_clang-16.0.6-centos7/x86_64-unknown-linux-gnu
+export UE_LIBCXX_ROOT="$UE_LIBCXX"    # .../ThirdParty/Unix/LibCxx
+```
+
+For reference, its contents:
 
 ```cmake
-# CMake toolchain: Unreal Engine 5.3 Linux (clang 16.0.6 + UE libc++)
-set(CMAKE_SYSTEM_NAME Linux)
-set(CMAKE_SYSTEM_PROCESSOR x86_64)
+# CMake toolchain file: Unreal Engine 5.3 Linux x86_64.
+#
+# Compiles with UE's bundled clang 16.0.6 (v22_clang-16.0.6-centos7) against
+# its CentOS 7 sysroot (glibc 2.17), and uses UE's libc++ instead of the
+# sysroot's libstdc++, the same way UnrealBuildTool's LinuxToolChain does.
+#
+# Required environment variables (read from the environment so they also
+# reach CMake's try_compile() sub-projects):
+#   UE_TOOLCHAIN_ROOT  .../v22_clang-16.0.6-centos7/x86_64-unknown-linux-gnu
+#   UE_LIBCXX_ROOT     .../ThirdParty/Unix/LibCxx  (has include/c++/v1 and lib/Unix/...)
 
-set(UE_TC        "$ENV{LINUX_MULTIARCH_ROOT}/x86_64-unknown-linux-gnu")
-set(UE_LIBCXX    "$ENV{UE_LIBCXX}")
-set(UE_LIBCXX_LIB "$ENV{UE_LIBCXX_LIB}")
+# Host and target are both Linux x86_64, so CMAKE_SYSTEM_NAME is deliberately
+# NOT set: that would mark the build as cross-compiling, and gRPC would then
+# look for a pre-installed host grpc_cpp_plugin instead of using the one it
+# builds. The sysroot below still isolates the build from the host's libraries.
 
-set(CMAKE_SYSROOT "${UE_TC}")
-set(CMAKE_C_COMPILER   "${UE_TC}/bin/clang")
-set(CMAKE_CXX_COMPILER "${UE_TC}/bin/clang++")
-set(CMAKE_C_COMPILER_TARGET   x86_64-unknown-linux-gnu)
+if(NOT DEFINED ENV{UE_TOOLCHAIN_ROOT} OR NOT DEFINED ENV{UE_LIBCXX_ROOT})
+  message(FATAL_ERROR "Set UE_TOOLCHAIN_ROOT and UE_LIBCXX_ROOT before using this toolchain file.")
+endif()
+
+set(_ue_tc "$ENV{UE_TOOLCHAIN_ROOT}")
+set(_ue_libcxx "$ENV{UE_LIBCXX_ROOT}")
+set(_ue_libcxx_lib "${_ue_libcxx}/lib/Unix/x86_64-unknown-linux-gnu")
+
+set(CMAKE_SYSROOT "${_ue_tc}")
+set(CMAKE_C_COMPILER "${_ue_tc}/bin/clang")
+set(CMAKE_CXX_COMPILER "${_ue_tc}/bin/clang++")
+set(CMAKE_C_COMPILER_TARGET x86_64-unknown-linux-gnu)
 set(CMAKE_CXX_COMPILER_TARGET x86_64-unknown-linux-gnu)
-set(CMAKE_AR     "${UE_TC}/bin/llvm-ar"     CACHE FILEPATH "")
-set(CMAKE_RANLIB "${UE_TC}/bin/llvm-ranlib" CACHE FILEPATH "")
+# The toolchain ships llvm-ar/llvm-objcopy plus GNU binutils 2.31 under the
+# x86_64-unknown-linux-gnu- prefix (there is no llvm-ranlib/llvm-nm).
+set(_ue_binutils "${_ue_tc}/bin/x86_64-unknown-linux-gnu-")
+set(CMAKE_AR "${_ue_tc}/bin/llvm-ar" CACHE FILEPATH "")
+set(CMAKE_RANLIB "${_ue_binutils}ranlib" CACHE FILEPATH "")
+set(CMAKE_NM "${_ue_binutils}nm" CACHE FILEPATH "")
+set(CMAKE_OBJCOPY "${_ue_tc}/bin/llvm-objcopy" CACHE FILEPATH "")
+set(CMAKE_OBJDUMP "${_ue_binutils}objdump" CACHE FILEPATH "")
+set(CMAKE_READELF "${_ue_binutils}readelf" CACHE FILEPATH "")
+set(CMAKE_STRIP "${_ue_binutils}strip" CACHE FILEPATH "")
 
-# Compile against UE's libc++ headers instead of the sysroot's libstdc++.
-set(CMAKE_C_FLAGS_INIT   "-fPIC")
-set(CMAKE_CXX_FLAGS_INIT "-fPIC -nostdinc++ -isystem ${UE_LIBCXX}/include/c++/v1")
+# UE game/editor modules are shared objects, so everything must be PIC.
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CMAKE_C_FLAGS_INIT "-fPIC")
+# Use UE's libc++ headers instead of the sysroot's libstdc++.
+set(CMAKE_CXX_FLAGS_INIT "-fPIC -nostdinc++ -isystem ${_ue_libcxx}/include/c++/v1")
 
-# Link with lld and UE's static libc++ (same as UnrealBuildTool's LinuxToolChain).
-set(CMAKE_EXE_LINKER_FLAGS_INIT    "-fuse-ld=lld")
+# Link with lld and UE's static libc++/libc++abi.
+set(CMAKE_EXE_LINKER_FLAGS_INIT "-fuse-ld=lld")
 set(CMAKE_SHARED_LINKER_FLAGS_INIT "-fuse-ld=lld")
+set(CMAKE_MODULE_LINKER_FLAGS_INIT "-fuse-ld=lld")
 set(CMAKE_CXX_STANDARD_LIBRARIES
-    "-nodefaultlibs ${UE_LIBCXX_LIB}/libc++.a ${UE_LIBCXX_LIB}/libc++abi.a -lm -lc -lpthread -ldl -lrt -lgcc_s -lgcc")
+    "-nodefaultlibs ${_ue_libcxx_lib}/libc++.a ${_ue_libcxx_lib}/libc++abi.a -lm -lc -lpthread -ldl -lrt -lgcc_s -lgcc")
 
-# Allow find_* to see paths outside the sysroot (UE OpenSSL/zlib live there).
+# Programs (python, perl, ...) come from the host; libraries/headers may live
+# in the sysroot or outside it (UE's OpenSSL and zlib).
 set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY BOTH)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE BOTH)
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
 ```
+
+Things that matter in it:
+
+- **`CMAKE_SYSTEM_NAME` is not set.** Setting it makes CMake treat the
+  build as a cross-compile, and gRPC then looks for a pre-installed host
+  `grpc_cpp_plugin` instead of using the one it builds.
+- **The toolchain has no `llvm-ranlib`, `llvm-nm` or `llvm-readelf`.** It
+  ships GNU binutils 2.31 as `x86_64-unknown-linux-gnu-*` next to `clang`
+  and `llvm-ar`.
 
 ---
 
@@ -224,14 +275,16 @@ cd ~/grpc-ue
 export PREFIX=~/grpc-ue/install
 
 cmake -S grpc -B build -G Ninja \
-  -DCMAKE_TOOLCHAIN_FILE=$HOME/grpc-ue/ue53-linux-x86_64.cmake \
+  -DCMAKE_TOOLCHAIN_FILE=/path/to/unreal-grpc-test/cmake/ue53-linux-x86_64.cmake \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_INSTALL_PREFIX="$PREFIX" \
   -DCMAKE_CXX_STANDARD=20 \
+  -DCMAKE_CXX_STANDARD_REQUIRED=ON \
   -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
   -DBUILD_SHARED_LIBS=OFF \
   -DgRPC_INSTALL=ON \
   -DgRPC_BUILD_TESTS=OFF \
+  -DgRPC_DOWNLOAD_ARCHIVES=OFF \
   -DgRPC_ABSL_PROVIDER=module \
   -DgRPC_PROTOBUF_PROVIDER=module \
   -DgRPC_RE2_PROVIDER=module \
@@ -244,6 +297,7 @@ cmake -S grpc -B build -G Ninja \
   -DgRPC_ZLIB_PROVIDER=package \
   -DZLIB_INCLUDE_DIR="$UE_ZLIB_INC" \
   -DZLIB_LIBRARY="$UE_ZLIB_LIB" \
+  -DZLIB_USE_STATIC_LIBS=ON \
   -DgRPC_BUILD_CODEGEN=ON \
   -DgRPC_BUILD_GRPC_CPP_PLUGIN=ON \
   -DgRPC_BUILD_GRPC_CSHARP_PLUGIN=OFF \
@@ -256,7 +310,8 @@ cmake -S grpc -B build -G Ninja \
   -DABSL_ENABLE_INSTALL=ON \
   -Dprotobuf_BUILD_TESTS=OFF \
   -Dprotobuf_INSTALL=ON \
-  -DRE2_BUILD_TESTING=OFF
+  -DRE2_BUILD_TESTING=OFF \
+  -DCARES_BUILD_TOOLS=OFF
 
 cmake --build build -j"$(nproc)"
 cmake --install build
@@ -302,7 +357,7 @@ cd "$PREFIX/lib"
   echo "SAVE"; echo "END"
 } > merge.mri
 "$UE_TC/bin/llvm-ar" -M < merge.mri
-"$UE_TC/bin/llvm-ranlib" libgrpc_ue.a
+"$UE_TC/bin/x86_64-unknown-linux-gnu-ranlib" libgrpc_ue.a
 ls -lh libgrpc_ue.a
 ```
 
@@ -318,14 +373,14 @@ because only the code generators use them.)
 cd "$PREFIX"
 
 # 1) Uses libc++ (std::__1), never libstdc++ (std::__cxx11)
-"$UE_TC/bin/llvm-nm" -C lib/libgrpc++.a | grep -c 'std::__1::'        # > 0
-"$UE_TC/bin/llvm-nm" -C lib/*.a | grep -c 'std::__cxx11::'            # must be 0
+"$UE_TC/bin/x86_64-unknown-linux-gnu-nm" -C lib/libgrpc++.a | grep -c 'std::__1::'        # > 0
+"$UE_TC/bin/x86_64-unknown-linux-gnu-nm" -C lib/*.a | grep -c 'std::__cxx11::'            # must be 0
 
 # 2) Compiled by UE's clang
-"$UE_TC/bin/llvm-readelf" -p .comment bin/protoc | grep -i clang   # 16.0.6
+"$UE_TC/bin/x86_64-unknown-linux-gnu-readelf" -p .comment bin/protoc | grep -i clang   # 16.0.6
 
 # 3) No BoringSSL / zlib definitions inside (they must come from UE)
-"$UE_TC/bin/llvm-nm" --defined-only lib/libgrpc_ue.a 2>/dev/null | grep -E ' T (SSL_CTX_new|EVP_DigestInit|deflate)$'   # must be empty
+"$UE_TC/bin/x86_64-unknown-linux-gnu-nm" --defined-only lib/libgrpc_ue.a 2>/dev/null | grep -E ' T (SSL_CTX_new|EVP_DigestInit|deflate)$'   # must be empty
 
 # 4) Host tools run on RHEL 8 and need nothing newer than glibc 2.17 / no libstdc++
 ./bin/protoc --version

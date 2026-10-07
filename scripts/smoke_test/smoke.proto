@@ -1,0 +1,16 @@
+// Minimal service used by scripts/build-grpc.sh to smoke-test the build.
+syntax = "proto3";
+
+package smoke;
+
+service Echo {
+  rpc Say(EchoRequest) returns (EchoReply) {}
+}
+
+message EchoRequest {
+  string text = 1;
+}
+
+message EchoReply {
+  string text = 1;
+}

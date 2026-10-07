@@ -1,6 +1,6 @@
 # Plan: build gRPC with the Unreal Engine 5.3 Linux toolchain
 
-Status: **draft for review**. Nothing has been built yet.
+Status: **implemented.** See [BUILD_ON_LINUX.md](BUILD_ON_LINUX.md) and `scripts/build-grpc.sh`. Built binaries are not committed (option (c) in step 9); run the script to produce them.
 
 ## Goal
 
