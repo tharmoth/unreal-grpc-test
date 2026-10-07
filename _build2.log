@@ -1,0 +1,53 @@
+
+[1;34m==> Checking host prerequisites[0m
+    [32mOK[0m cmake 3.28.3, ninja 1.11.1
+
+[1;34m==> Checking UE ThirdParty files[0m
+    [32mOK[0m libc++, OpenSSL 1.1.1t and zlib 1.2.13 found under /home/user/unreal-grpc-test
+
+[1;34m==> Locating the UE 5.3 clang toolchain (v22_clang-16.0.6-centos7)[0m
+    [32mOK[0m clang version 16.0.6 (github.com/llvm/llvm-project 7cbf1a2591520c2491aa35339f227775f4d3adf6)
+
+[1;34m==> Fetching gRPC v1.84.0[0m
+    [32mOK[0m v1.84.0 with submodules: third_party/abseil-cpp third_party/cares/cares third_party/grpc-proto third_party/protobuf third_party/re2
+
+[1;34m==> Configuring (C++20, Release, static, PIC) in /home/user/unreal-grpc-test/_work/build-grpc-v1.84.0[0m
+-- protobuf version: 35.1.0
+-- Checking for module 'libsystemd>=233'
+--   Package 'libsystemd', required by 'virtual:world', not found
+-- Configuring done (0.3s)
+-- Generating done (0.3s)
+-- Build files have been written to: /home/user/unreal-grpc-test/_work/build-grpc-v1.84.0
+
+[1;34m==> Building with 4 jobs (this takes a while)[0m
+ninja: no work to do.
+
+[1;34m==> Installing to /home/user/unreal-grpc-test/_install/grpc-v1.84.0-ue53-linux-x86_64[0m
+    [32mOK[0m installed
+
+[1;34m==> Merging static libraries into libgrpc_ue.a[0m
+    [32mOK[0m 83M /home/user/unreal-grpc-test/_install/grpc-v1.84.0-ue53-linux-x86_64/lib/libgrpc_ue.a
+
+[1;34m==> Verifying the build[0m
+    [32mOK[0m uses UE libc++ (std::__1 symbols present)
+    [32mOK[0m no libstdc++ (std::__cxx11) symbols
+    [32mOK[0m no bundled OpenSSL/BoringSSL/zlib definitions
+    [32mOK[0m protoc: max GLIBC_2.16, no libstdc++
+    [32mOK[0m grpc_cpp_plugin: max GLIBC_2.16, no libstdc++
+    [32mOK[0m libprotoc 35.1
+    [32mOK[0m compiled by UE clang 16.0.6
+    [32mOK[0m libgrpc_ue.a is position-independent (safe for UE editor .so modules)
+
+[1;34m==> Smoke test: codegen + client/server RPC over localhost[0m
+    gRPC 1.84.0, OpenSSL 1.1.1t  7 Feb 2023, C++202002
+    OK plaintext RPC -> "echo: plaintext"
+    OK tls RPC -> "echo: tls"
+    Smoke test PASSED
+
+[1;34m==> Done[0m
+    gRPC v1.84.0 for UE 5.3 (Linux x86_64, C++20) is in:
+      /home/user/unreal-grpc-test/_install/grpc-v1.84.0-ue53-linux-x86_64/include          headers
+      /home/user/unreal-grpc-test/_install/grpc-v1.84.0-ue53-linux-x86_64/lib/libgrpc_ue.a single merged static library (link this from UE)
+      /home/user/unreal-grpc-test/_install/grpc-v1.84.0-ue53-linux-x86_64/lib/*.a          the individual libraries
+      /home/user/unreal-grpc-test/_install/grpc-v1.84.0-ue53-linux-x86_64/bin/protoc       code generators (use these for your .proto files)
+      /home/user/unreal-grpc-test/_install/grpc-v1.84.0-ue53-linux-x86_64/bin/grpc_cpp_plugin

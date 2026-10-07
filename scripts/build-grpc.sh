@@ -227,7 +227,8 @@ if [ "$RUN_SMOKE_TEST" = 1 ]; then
     --plugin=protoc-gen-grpc="$PREFIX/bin/grpc_cpp_plugin" "$ST/smoke.proto"
   "$TC/bin/clang++" --target=x86_64-unknown-linux-gnu --sysroot="$TC" \
     -std=c++"$CXX_STANDARD" -O2 -fPIC -DPROTOBUF_NO_INLINE_CALL -nostdinc++ -isystem "$UE_LIBCXX_ROOT/include/c++/v1" \
-    -I "$PREFIX/include" -I "$ST" \
+    -Wno-deprecated-declarations \
+    -I "$PREFIX/include" -isystem "$UE_OPENSSL_INC" -I "$ST" \
     "$ST/smoke_test.cc" "$ST/smoke.pb.cc" "$ST/smoke.grpc.pb.cc" -o "$ST/smoke_test" \
     -fuse-ld=lld "$PREFIX/lib/libgrpc_ue.a" \
     "$UE_OPENSSL_LIB/libssl.a" "$UE_OPENSSL_LIB/libcrypto.a" "$UE_ZLIB_LIB" \
