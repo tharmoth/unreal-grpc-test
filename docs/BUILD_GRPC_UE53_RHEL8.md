@@ -77,6 +77,11 @@ ls "$UE_TC/usr/lib64" 2>/dev/null | head   # the sysroot
 
 ### 2b. UE's libc++, OpenSSL, and zlib
 
+The clang toolchain does **not** include libc++. Its sysroot only has
+CentOS 7's libstdc++. libc++ comes from the engine tree, which `Setup.sh` /
+`Setup.bat` populates. If you can't find it, see "Troubleshooting: LibCxx is
+missing" at the end of this section.
+
 ```bash
 export UE_TP="$UE_ROOT/Engine/Source/ThirdParty"
 
@@ -98,6 +103,33 @@ export UE_ZLIB_LIB="$UE_TP/zlib/1.2.13/lib/Unix/x86_64-unknown-linux-gnu/Release
 ```
 
 If any `find` shows a different path, use that path in the `export` lines.
+
+#### Troubleshooting: LibCxx is missing
+
+1. **Search the whole tree.** The folder may be somewhere other than where
+   this guide expects (older engines used `ThirdParty/Linux/LibCxx`):
+   ```bash
+   find "$UE_ROOT/Engine" -name 'LibCxx.Build.cs' -o -name 'libc++.a' -o -name 'libc++abi.a'
+   ```
+   On Windows (PowerShell, from the engine root):
+   ```powershell
+   Get-ChildItem Engine -Recurse -Include LibCxx.Build.cs,libc++.a,libc++abi.a -ErrorAction SilentlyContinue | Select-Object FullName
+   ```
+2. **Check whether `Setup` was supposed to download it:**
+   ```powershell
+   Select-String -Path Engine\Build\Commit.gitdeps.xml -Pattern 'LibCxx' | Select-Object -First 5
+   echo $env:UE_GITDEPS_ARGS
+   ```
+   If the manifest lists LibCxx files but they aren't on disk, Linux files
+   were excluded. That happens when `Setup.bat` was run with
+   `--exclude=Linux` / `--exclude=Unix`, or when `UE_GITDEPS_ARGS` contains
+   an exclude. Clear the exclude and run `Setup.bat` again.
+3. **Other sources:**
+   - Run `Setup.sh` on the Linux machine. It always fetches the Linux files.
+   - Use a Launcher install of 5.3 with *Target Platforms → Linux* enabled.
+4. **Last resort:** build libc++ yourself from LLVM sources. This is less
+   safe. If the headers gRPC was compiled with are newer than the `libc++.a`
+   UE links, you can get undefined `std::__1::…` symbols at the final UE link.
 
 ### 2c. Copying these pieces from a Windows UE 5.3 install
 
