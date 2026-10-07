@@ -226,7 +226,7 @@ if [ "$RUN_SMOKE_TEST" = 1 ]; then
   "$PREFIX/bin/protoc" -I "$ST" --cpp_out="$ST" --grpc_out="$ST" \
     --plugin=protoc-gen-grpc="$PREFIX/bin/grpc_cpp_plugin" "$ST/smoke.proto"
   "$TC/bin/clang++" --target=x86_64-unknown-linux-gnu --sysroot="$TC" \
-    -std=c++"$CXX_STANDARD" -O1 -fPIC -nostdinc++ -isystem "$UE_LIBCXX_ROOT/include/c++/v1" \
+    -std=c++"$CXX_STANDARD" -O2 -fPIC -DPROTOBUF_NO_INLINE_CALL -nostdinc++ -isystem "$UE_LIBCXX_ROOT/include/c++/v1" \
     -I "$PREFIX/include" -I "$ST" \
     "$ST/smoke_test.cc" "$ST/smoke.pb.cc" "$ST/smoke.grpc.pb.cc" -o "$ST/smoke_test" \
     -fuse-ld=lld "$PREFIX/lib/libgrpc_ue.a" \

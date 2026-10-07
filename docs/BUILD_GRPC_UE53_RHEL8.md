@@ -330,6 +330,7 @@ The build takes about 15–40 minutes, depending on the number of cores.
 
 | Symptom | Fix |
 |---|---|
+| `clang frontend command failed with exit code 139` in `parse_context.h` | clang 16 bug with protobuf's `[[clang::always_inline]]`. Add `-DPROTOBUF_NO_INLINE_CALL` (the repo's toolchain file already does). |
 | `fatal error: 'vector' file not found` | `UE_LIBCXX` is wrong or not exported in this shell. |
 | `undefined reference to std::__1::…` while linking `protoc` | `UE_LIBCXX_LIB` is wrong, so the `libc++.a` path in `CMAKE_CXX_STANDARD_LIBRARIES` doesn't exist. |
 | `undefined reference to dlopen` / `clock_gettime` | Make sure `-ldl -lrt` are in `CMAKE_CXX_STANDARD_LIBRARIES`. |
@@ -449,6 +450,12 @@ public class GrpcLibrary : ModuleRules
 
         // Use the engine's OpenSSL and zlib (gRPC was built against them).
         AddEngineThirdPartyPrivateStaticDependencies(Target, "OpenSSL", "zlib");
+
+        // REQUIRED: UE 5.3's clang 16.0.6 crashes (segfault) on protobuf's
+        // statement-level [[clang::always_inline]] in parse_context.h, which
+        // every generated .pb.h includes. This turns that inlining hint off;
+        // gRPC was built with the same define.
+        PublicDefinitions.Add("PROTOBUF_NO_INLINE_CALL=1");
     }
 }
 ```

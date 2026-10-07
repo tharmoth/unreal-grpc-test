@@ -167,6 +167,11 @@ cp "$OUT/lib/libgrpc_ue.a" "$DEST/lib/Linux/"
 cp "$OUT/bin/protoc" "$OUT/bin/grpc_cpp_plugin" "$DEST/bin/Linux/"
 ```
 
+In the `GrpcLibrary.Build.cs`, you **must** add
+`PublicDefinitions.Add("PROTOBUF_NO_INLINE_CALL=1");`. Without it, UE 5.3's
+clang 16 segfaults when it compiles code that includes protobuf headers
+(a clang bug; gRPC was built with the same define).
+
 Then follow section 8 of [the manual](BUILD_GRPC_UE53_RHEL8.md#8-using-it-from-unreal-engine-53)
 for the `Build.cs`, the include wrapper for UE's `check`/`verify` macros,
 and generating code from your `.proto` files. Always use **this** `protoc`

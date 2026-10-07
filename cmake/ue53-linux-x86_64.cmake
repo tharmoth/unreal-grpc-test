@@ -42,7 +42,11 @@ set(CMAKE_STRIP "${_ue_binutils}strip" CACHE FILEPATH "")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_C_FLAGS_INIT "-fPIC")
 # Use UE's libc++ headers instead of the sysroot's libstdc++.
-set(CMAKE_CXX_FLAGS_INIT "-fPIC -nostdinc++ -isystem ${_ue_libcxx}/include/c++/v1")
+# PROTOBUF_NO_INLINE_CALL: UE 5.3's clang 16.0.6 segfaults on protobuf's
+# statement-level [[clang::always_inline]] (parse_context.h). Disabling that
+# inlining hint is protobuf's supported workaround and does not change the ABI.
+# Every UE module that includes protobuf/gRPC headers needs the same define.
+set(CMAKE_CXX_FLAGS_INIT "-fPIC -nostdinc++ -isystem ${_ue_libcxx}/include/c++/v1 -DPROTOBUF_NO_INLINE_CALL")
 
 # Link with lld and UE's static libc++/libc++abi.
 set(CMAKE_EXE_LINKER_FLAGS_INIT "-fuse-ld=lld")
