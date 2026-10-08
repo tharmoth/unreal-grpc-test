@@ -56,7 +56,7 @@ mkdir work && cd work
 
 The output goes to `./grpc-ue53/`, or to a third argument if you give one.
 The build tree goes to `./grpc-ue53-build/`, which you can delete afterwards.
-A 4-core machine takes roughly half an hour.
+A 4-core machine took 25 minutes in testing.
 
 | Output | What it is |
 |---|---|
@@ -105,4 +105,5 @@ includes protobuf headers. It's a clang bug; gRPC was built with the same define
 | `Missing: .../third_party/<name>/CMakeLists.txt` | The gRPC copy lacks that submodule. Redo the clone step above. |
 | `CMake 3.22 or higher is required` | Install a newer CMake. Its official Linux tarball from cmake.org also works offline. |
 | `clang frontend command failed with exit code 139` | You're compiling protobuf headers without `-DPROTOBUF_NO_INLINE_CALL`. |
+| Test fails with `127.0.0.1 ... Network is unreachable` | Loopback is down. This happens in some containers and network namespaces. Run `ip link set lo up` as root. The libraries themselves are fine. |
 | Compiler `Killed` | Out of memory. Edit the `-j "$(nproc)"` in the script to a smaller number. |
