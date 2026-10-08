@@ -11,6 +11,22 @@ Engine 5.3's own toolchain and libraries:
 It needs no internet access, and nothing beyond `bash`, `cmake` (3.22 or
 newer) and `make`. No Ninja, Python, git or curl.
 
+## Prebuilt package
+
+If you don't need to build it yourself, the repository has the script's
+output: `dist/grpc-v1.84.0-ue53-linux-x86_64.tar.gz`, about 25 MB. Extract it
+anywhere and continue with [section 4](#4-use-it-in-your-ue-53-project):
+
+```bash
+tar -xzf dist/grpc-v1.84.0-ue53-linux-x86_64.tar.gz    # -> grpc-v1.84.0-ue53-linux-x86_64/
+```
+
+It has the same layout as a `build-grpc.sh` output (`include/`,
+`lib/libgrpc_ue.a`, `bin/protoc`, `bin/grpc_cpp_plugin`). Its `README.txt`
+records the exact inputs, settings, checks and SHA-256 checksums. The test
+script works on it too:
+`test-grpc-build.sh /path/to/UnrealEngine ./grpc-v1.84.0-ue53-linux-x86_64`.
+
 ## 1. What the offline machine needs
 
 | Item | Notes |
