@@ -56,7 +56,7 @@ mkdir work && cd work
 
 The output goes to `./grpc-ue53/`, or to a third argument if you give one.
 The build tree goes to `./grpc-ue53-build/`, which you can delete afterwards.
-A 4-core machine took 25 minutes in testing.
+A 4-core machine took 25–40 minutes in testing.
 
 | Output | What it is |
 |---|---|
