@@ -464,7 +464,8 @@ Then, in the module that calls gRPC (e.g. `YourGame.Build.cs`):
 
 ```csharp
 PublicDependencyModuleNames.Add("GrpcLibrary");
-bUseRTTI = true;               // generated protobuf code uses typeid/dynamic_cast
+// bUseRTTI = true;          // optional: a -fno-rtti -fno-exceptions .so test
+//                          // built and ran fine; enable only if you hit RTTI errors
 bEnableExceptions = false;     // gRPC/protobuf work without exceptions
 // Generated .pb.cc files trip UE's stricter warnings:
 bEnableUndefinedIdentifierWarnings = false;
@@ -481,6 +482,8 @@ generated `*.pb.h` / `*.grpc.pb.h` files:
 #pragma once
 
 THIRD_PARTY_INCLUDES_START
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"   // grpcpp's own headers use deprecated types
 #pragma push_macro("check")
 #pragma push_macro("verify")
 #undef check
@@ -491,6 +494,7 @@ THIRD_PARTY_INCLUDES_START
 
 #pragma pop_macro("verify")
 #pragma pop_macro("check")
+#pragma clang diagnostic pop
 THIRD_PARTY_INCLUDES_END
 ```
 

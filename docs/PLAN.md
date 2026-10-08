@@ -41,8 +41,10 @@ crashes at runtime. The most common mismatch is libstdc++ vs libc++, where
    mismatched types.
 6. **Static libraries, Release, `-fPIC`**, with RTTI and exceptions left at gRPC's
    defaults (enabled). UE modules compile with `-fno-rtti -fno-exceptions`. That's
-   safe because the gRPC code is compiled separately. The UE wrapper module
-   that includes generated `.pb.h` headers sets `bUseRTTI = true`.
+   safe because the gRPC code is compiled separately. Verified: generated
+   code plus gRPC built into a `-fno-rtti -fno-exceptions` shared object
+   linked with `--no-undefined` and completed an RPC, so `bUseRTTI` is
+   optional.
 7. **Build `protoc` and `grpc_cpp_plugin` with the same toolchain.** They then run on
    RHEL 8 (and anything with glibc ≥ 2.17), and they're guaranteed to match
    the protobuf runtime version.
@@ -119,5 +121,5 @@ crashes at runtime. The most common mismatch is libstdc++ vs libc++, where
   inline namespace.
 - **UE macro collisions** (`check`, `verify`, `TEXT`, ...) in gRPC/protobuf
   headers. The wrapper header (step 8) handles the known ones.
-- **RTTI.** If protobuf's generated code needs RTTI in your module, set
-  `bUseRTTI = true` in that module only.
+- **RTTI.** A `-fno-rtti` shared-object test passed. If some protobuf
+  feature you use still needs RTTI, set `bUseRTTI = true` in that module only.

@@ -61,7 +61,15 @@ export PATH="$HOME/.local/bin:$PATH"     # add to ~/.bashrc
 and `cdn.unrealengine.com` (the UE toolchain, about 1.2 GB). If it's offline, see
 [Offline / air-gapped machines](#offline--air-gapped-machines).
 
-**Disk:** about __DISK__ GB free under the repository folder.
+**Disk:** about 4 GB free under the repository folder:
+
+- 1.2 GB toolchain download
+- 0.9 GB unpacked toolchain
+- 0.3 GB gRPC sources
+- 0.3 GB build tree
+- 0.3 GB install
+
+Delete `_work/` afterwards if you need the space back.
 
 ---
 
@@ -114,10 +122,28 @@ That's it. The script:
 On a 4-core machine the build takes about __TIME__. A successful run ends with:
 
 ```
+==> Verifying the build
+    OK uses UE libc++ (std::__1 symbols present)
+    OK no libstdc++ (std::__cxx11) symbols
+    OK no bundled OpenSSL/BoringSSL/zlib definitions
+    OK protoc: max GLIBC_2.16, no libstdc++
+    OK grpc_cpp_plugin: max GLIBC_2.16, no libstdc++
+    OK libprotoc 35.1
+    OK compiled by UE clang 16.0.6
+    OK libgrpc_ue.a is position-independent (safe for UE editor .so modules)
+
 ==> Smoke test: codegen + client/server RPC over localhost
-__SMOKE__
+    gRPC 1.84.0, OpenSSL 1.1.1t  7 Feb 2023, C++202002
+    OK plaintext RPC -> "echo: plaintext"
+    OK tls RPC -> "echo: tls"
+    Smoke test PASSED
+
 ==> Done
 ```
+
+Compiler **warnings** during the build are expected. They're deprecation
+notices inside gRPC and protobuf themselves. Only a line starting with
+`ERROR:`, or a non-zero exit, means the build failed.
 
 Run it again any time. Downloads and the gRPC checkout are reused, and the
 build is incremental. Use `CLEAN=1` to rebuild from scratch.
