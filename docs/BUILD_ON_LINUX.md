@@ -104,7 +104,13 @@ Copy `include/`, `lib/libgrpc_ue.a` and the two `bin/` tools into a
 third-party module, e.g. `Source/ThirdParty/GrpcLibrary/`. Then follow
 section 6 of [the manual](BUILD_GRPC_UE53_RHEL8.md#6-using-it-from-unreal-engine-53).
 
-One thing is **required** in that module's `Build.cs`:
+Two things are **required**. First, put the generated `.pb.cc` files outside your
+game module, wrap every gRPC/generated include in this repo's
+`ue/GrpcIncludesBegin.h` / `ue/GrpcIncludesEnd.h`, and compile the
+generated sources through one wrapper `.cpp`
+([`ue/ProtoSources.cpp.example`](../ue/ProtoSources.cpp.example)). Otherwise
+Unreal's `verify` macro breaks Abseil's btree (manual section 6c).
+Second, in the module's `Build.cs`:
 
 ```csharp
 PublicDefinitions.Add("PROTOBUF_NO_INLINE_CALL=1");
@@ -122,4 +128,5 @@ includes protobuf headers. It's a clang bug; gRPC was built with the same define
 | `CMake 3.22 or higher is required` | Install a newer CMake. Its official Linux tarball from cmake.org also works offline. |
 | `clang frontend command failed with exit code 139` | You're compiling protobuf headers without `-DPROTOBUF_NO_INLINE_CALL`. |
 | Test fails with `127.0.0.1 ... Network is unreachable` | Loopback is down. This happens in some containers and network namespaces. Run `ip link set lo up` as root. The libraries themselves are fine. |
+| In UE: `btree.h: expected member name or ';'`, `no member named 'btree_access'` | Unreal's `verify`/`check` macros are leaking into gRPC/abseil code. Use `ue/GrpcIncludesBegin.h`/`End.h`, and keep generated `.pb.cc` files out of the game module (manual section 6c). |
 | Compiler `Killed` | Out of memory. Edit the `-j "$(nproc)"` in the script to a smaller number. |

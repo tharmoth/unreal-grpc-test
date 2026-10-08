@@ -1,0 +1,12 @@
+// Compiles the protoc-generated sources inside an Unreal module.
+//
+// Rename to e.g. HelloworldProtos.cpp, place it in your game module's Private/
+// folder and list each generated .pb.cc / .grpc.pb.cc below. Keep the
+// generated files themselves OUT of your game module's source tree (e.g. in
+// Source/ThirdParty/GrpcLibrary/generated/), otherwise UnrealBuildTool also
+// compiles them directly, with check/verify defined, and you get the abseil
+// btree errors again.
+#include "GrpcIncludesBegin.h"
+#include "helloworld.pb.cc"
+#include "helloworld.grpc.pb.cc"
+#include "GrpcIncludesEnd.h"

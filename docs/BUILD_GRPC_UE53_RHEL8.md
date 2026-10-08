@@ -269,12 +269,20 @@ objdump -T bin/protoc | grep -o 'GLIBC_[0-9.]*' | sort -Vu | tail -1   # <= GLIB
 
 ```
 YourProject/
-  Source/ThirdParty/GrpcLibrary/
+  Source/ThirdParty/GrpcLibrary/          <- External module: UBT never compiles files here
     GrpcLibrary.Build.cs
-    include/          <- copy of <install dir>/include
+    include/          <- copy of <install dir>/include, plus this repo's
+                         ue/GrpcIncludesBegin.h and ue/GrpcIncludesEnd.h
     lib/Linux/        <- libgrpc_ue.a
     bin/Linux/        <- protoc, grpc_cpp_plugin (for codegen only)
+    generated/        <- protoc output (*.pb.h, *.pb.cc, *.grpc.pb.h, *.grpc.pb.cc)
+  Source/YourGame/Private/
+    MyServiceProtos.cpp   <- compiles the generated .pb.cc files (see 6c)
 ```
+
+The generated `.pb.cc` files **must not** live in your game module's source
+tree. UBT would compile them directly with Unreal's `check`/`verify` macros
+defined, and they fail inside Abseil's btree (see 6c).
 
 ### 6b. `GrpcLibrary.Build.cs`
 
@@ -289,6 +297,7 @@ public class GrpcLibrary : ModuleRules
         Type = ModuleType.External;
 
         PublicSystemIncludePaths.Add(Path.Combine(ModuleDirectory, "include"));
+        PublicSystemIncludePaths.Add(Path.Combine(ModuleDirectory, "generated"));
 
         if (Target.Platform == UnrealTargetPlatform.Linux)
         {
@@ -318,48 +327,65 @@ bEnableExceptions = false;     // gRPC/protobuf work without exceptions
 bEnableUndefinedIdentifierWarnings = false;
 ```
 
-### 6c. Including gRPC headers
+### 6c. Including gRPC headers and compiling generated code
 
-Unreal defines macros (`check`, `verify`, `TEXT`, ...) that collide with
-identifiers in protobuf, abseil, and gRPC. Wrap every include, including your
-generated `*.pb.h` / `*.grpc.pb.h` files:
+Unreal defines `check(expr)` and `verify(expr)` macros in every file of a
+module. Abseil's btree, which every generated `.pb.cc` pulls in through
+protobuf, declares a member function `verify()`. The macro rewrites it, and
+you get errors like:
 
-```cpp
-// GrpcIncludes.h
-#pragma once
-
-THIRD_PARTY_INCLUDES_START
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"   // grpcpp's own headers use deprecated types
-#pragma push_macro("check")
-#pragma push_macro("verify")
-#undef check
-#undef verify
-
-#include <grpcpp/grpcpp.h>
-#include "MyService.grpc.pb.h"
-
-#pragma pop_macro("verify")
-#pragma pop_macro("check")
-#pragma clang diagnostic pop
-THIRD_PARTY_INCLUDES_END
+```
+absl/container/internal/btree.h:1596:8: error: expected member name or ';' after declaration specifiers
+absl/container/internal/btree_container.h:207:48: error: use of undeclared identifier 'get_allocator'
+absl/container/btree_map.h:509:30: error: no member named 'btree_access' in namespace 'absl::container_internal'
 ```
 
-Compile the generated `.pb.cc` files as part of a UE module, wrapping them
-the same way: either rename them to `.cpp` with the wrapper at the top and
-bottom, or include them from a wrapper `.cpp`.
+The fix is to hide `check`/`verify` while gRPC/protobuf code is parsed.
+[`ue/GrpcIncludesBegin.h`](../ue/GrpcIncludesBegin.h) and
+[`ue/GrpcIncludesEnd.h`](../ue/GrpcIncludesEnd.h) do that (plus
+`THIRD_PARTY_INCLUDES_START/END` and silencing gRPC's own deprecation
+warnings). Put both in `GrpcLibrary/include/`.
+
+**1. Wherever you include gRPC or generated headers:**
+
+```cpp
+#include "GrpcIncludesBegin.h"
+#include <grpcpp/grpcpp.h>
+#include "helloworld.grpc.pb.h"
+#include "GrpcIncludesEnd.h"
+// check()/verify() work normally again from here on
+```
+
+**2. Compile the generated sources through one wrapper `.cpp`** in your game
+module ([`ue/ProtoSources.cpp.example`](../ue/ProtoSources.cpp.example)):
+
+```cpp
+// Source/YourGame/Private/HelloworldProtos.cpp
+#include "GrpcIncludesBegin.h"
+#include "helloworld.pb.cc"
+#include "helloworld.grpc.pb.cc"
+#include "GrpcIncludesEnd.h"
+```
+
+This was tested with gRPC's helloworld example under UE-style conditions:
+`check`/`verify` force-included into every file, `-fno-rtti
+-fno-exceptions`, built as a shared library. It compiled, linked with
+`--no-undefined`, and got `Hello Unreal` back from gRPC's `greeter_server`.
+Compiling the same `helloworld.pb.cc` directly gave 20 btree errors.
 
 ### 6d. Generating code from your `.proto`
 
 Always use the `protoc` and `grpc_cpp_plugin` from **this build**. The
-generated code must match the protobuf runtime version exactly.
+generated code must match the protobuf runtime version exactly. Generate
+into the External module's `generated/` folder, not into your game module:
 
 ```bash
-Source/ThirdParty/GrpcLibrary/bin/Linux/protoc -I protos \
-  --cpp_out=Source/YourGame/Generated --grpc_out=Source/YourGame/Generated \
-  --plugin=protoc-gen-grpc=Source/ThirdParty/GrpcLibrary/bin/Linux/grpc_cpp_plugin \
-  protos/my_service.proto
+G=Source/ThirdParty/GrpcLibrary
+$G/bin/Linux/protoc -I protos --cpp_out=$G/generated --grpc_out=$G/generated \
+  --plugin=protoc-gen-grpc=$G/bin/Linux/grpc_cpp_plugin protos/helloworld.proto
 ```
+
+Then add the new `.pb.cc` / `.grpc.pb.cc` files to your wrapper `.cpp`.
 
 ### 6e. Threading note
 

@@ -21,6 +21,7 @@ built and checksums.
 | [docs/BUILD_ON_LINUX.md](docs/BUILD_ON_LINUX.md) | How to run the build, including on a machine without internet |
 | [docs/BUILD_GRPC_UE53_RHEL8.md](docs/BUILD_GRPC_UE53_RHEL8.md) | What the script does and why, plus how to use the result in UE |
 | `dist/` | Prebuilt package (gRPC v1.84.0, UE 5.3, Linux x86_64) |
+| `ue/` | Headers and a wrapper `.cpp` for using gRPC inside a UE module (hides UE's `check`/`verify` macros from abseil) |
 | `scripts/build-grpc.sh` | The build (one self-contained file) |
 | `scripts/test-grpc-build.sh`, `scripts/smoke_test/` | Optional client/server test of a finished build |
 | [docs/PLAN.md](docs/PLAN.md), [docs/WINDOWS_RHEL8_TEST_ENV.md](docs/WINDOWS_RHEL8_TEST_ENV.md) | Background: the original plan; a RHEL 8-like WSL setup |
